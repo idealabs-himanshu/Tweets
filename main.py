@@ -3,15 +3,11 @@ import streamlit as st
 import requests
 import json
 from dotenv import load_dotenv
-from crewai import Agent, Task, Crew, Process
 import google.generativeai as genai
-
-# Set dummy OpenAI API key to bypass validation
-os.environ['OPENAI_API_KEY'] = 'dummy_key_not_actually_used'
 
 # Page configuration
 st.set_page_config(
-    page_title="CrewAI News Insights", 
+    page_title="AI News Insights", 
     page_icon="📰", 
     layout="centered"
 )
@@ -66,134 +62,99 @@ def initialize_gemini_model():
     """
     return genai.GenerativeModel('gemini-pro')
 
-def research_news(topic):
-    """
-    Perform in-depth research on the news topic
-    """
-    model = initialize_gemini_model()
-    prompt = f"""Conduct a comprehensive research analysis on the topic: {topic}
-    
-    Research Objectives:
-    - Identify key themes and underlying narratives
-    - Provide context and historical background
-    - Highlight potential implications
-    - Maintain an objective, analytical approach
-    
-    Deliver a well-structured research summary."""
-    
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        st.error(f"Research Generation Error: {e}")
-        return f"Comprehensive research on {topic} could not be generated."
+class NewsAgent:
+    def __init__(self, role, goal, backstory):
+        self.role = role
+        self.goal = goal
+        self.backstory = backstory
+        self.model = initialize_gemini_model()
 
-def generate_tweet_analysis(news_item):
-    """
-    Generate a professional tweet with deep insights
-    """
-    model = initialize_gemini_model()
-    prompt = f"""Create a professional, insightful social media post based on:
+    def research_news(self, topic):
+        """
+        Perform in-depth research on the news topic
+        """
+        prompt = f"""As a {self.role} with the goal of {self.goal}, 
+        conduct a comprehensive research analysis on the topic: {topic}
+        
+        Research Objectives:
+        - Identify key themes and underlying narratives
+        - Provide context and historical background
+        - Highlight potential implications
+        - Maintain an objective, analytical approach
+        
+        Deliver a well-structured research summary."""
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            st.error(f"Research Generation Error: {e}")
+            return f"Comprehensive research on {topic} could not be generated."
+
+    def generate_insight(self, news_item, research_context):
+        """
+        Generate a professional insight with deep analysis
+        """
+        prompt = f"""As a {self.role}, create a professional, insightful analysis based on:
 
 News Context:
 Title: {news_item['title']}
 Snippet: {news_item['snippet']}
 
+Previous Research:
+{research_context}
+
 Guidelines:
 - Craft a nuanced, professional insight
+- Integrate research context
 - Maintain objectivity
-- Aim for 280-300 characters
+- Aim for 300-350 characters
 - Provoke thoughtful reflection
-- Include a subtle, relevant hashtag"""
-    
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        st.error(f"Tweet Generation Error: {e}")
-        return f"Insight on {news_item['title']}: A nuanced perspective on recent developments."
-
-def create_crew(topic, news_articles):
-    """
-    Create and configure the CrewAI crew
-    """
-    # Define Agents
-    news_researcher = Agent(
-        role='Senior News Researcher',
-        goal='Conduct comprehensive research on current news topics',
-        backstory='''An experienced investigative journalist with a PhD in Media Studies, 
-        known for providing deep, nuanced analysis of complex global events. 
-        Committed to uncovering the broader context behind headlines.''',
-        verbose=True
-    )
-
-    tweet_strategist = Agent(
-        role='Social Media Insights Strategist',
-        goal='Transform complex news into concise, thought-provoking social media content',
-        backstory='''A communication expert with a background in journalism and 
-        digital media strategy. Specializes in distilling complex information 
-        into engaging, professional social media narratives.''',
-        verbose=True
-    )
-
-    # Define Tasks
-    tasks = []
-    for article in news_articles:
-        # Research Task
-        research_task = Task(
-            description=f'Conduct an in-depth research analysis on: {article["title"]}',
-            agent=news_researcher,
-            expected_output='A comprehensive research summary providing context and insights'
-        )
-
-        # Tweet Generation Task
-        tweet_task = Task(
-            description=f'Generate a professional tweet for: {article["title"]}',
-            agent=tweet_strategist,
-            expected_output='A professional, nuanced social media insight'
-        )
-
-        tasks.extend([research_task, tweet_task])
-
-    # Create Crew
-    crew = Crew(
-        agents=[news_researcher, tweet_strategist],
-        tasks=tasks,
-        verbose=True,
-        process=Process.sequential
-    )
-
-    return crew
+- Include a subtle, relevant perspective"""
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            st.error(f"Insight Generation Error: {e}")
+            return f"Insight on {news_item['title']}: A nuanced perspective on recent developments."
 
 def add_sidebar():
     """Enhanced sidebar with detailed app information"""
-    st.sidebar.title("CrewAI News Insights")
+    st.sidebar.title("AI News Insights")
     st.sidebar.info("""
-    ### Collaborative AI News Analysis
+    ### Intelligent News Analysis
 
-    🤖 Powered by CrewAI:
-    - Intelligent News Research
-    - Professional Insight Generation
+    🧠 Powered by:
+    - Serper News API
+    - Google Gemini AI
     
-    #### Workflow:
-    1. Specialized Researcher Agent
-    2. Social Media Strategist Agent
-    3. Comprehensive News Insights
+    #### Features:
+    - Deep news research
+    - Contextual insights
+    - Objective analysis
 
-    #### Key Features:
-    - Deep contextual analysis
-    - Nuanced content generation
-    - Multi-agent collaboration
+    #### How It Works:
+    1. Enter a news topic
+    2. Retrieve latest news
+    3. Generate in-depth insights
     """)
 
 def main():
-    st.title("📰 CrewAI News Insights Generator")
+    st.title("📰 AI-Powered News Insights")
     st.markdown("""
-    ## Collaborative AI News Analysis
+    ## Discover Deeper Perspectives
 
-    Discover deep, nuanced insights through 
-    our intelligent multi-agent system.
+    Transform headlines into comprehensive insights 
+    with our AI-driven analysis tool.
     """)
+    
+    # Initialize Agents
+    researcher = NewsAgent(
+        role='Senior News Analyst',
+        goal='Provide comprehensive and nuanced news analysis',
+        backstory='An experienced investigative journalist with expertise in global affairs and deep contextual understanding.'
+    )
     
     # Topic input
     topic = st.text_input(
@@ -229,14 +190,14 @@ def main():
                     - **Source Link:** {article['link']}
                     """)
                     
-                    # Generate research context and tweet
-                    research_context = research_news(article['title'])
-                    tweet_insight = generate_tweet_analysis(article)
+                    # Generate research context and insight
+                    research_context = researcher.research_news(article['title'])
+                    insight = researcher.generate_insight(article, research_context)
                     
                     # Display insights
                     st.markdown(f"**🔬 Research Context {idx}:**")
                     st.write(research_context)
-                    st.markdown(f"**💡 Insight {idx}:** *{tweet_insight}*")
+                    st.markdown(f"**💡 Insight {idx}:** *{insight}*")
                     st.divider()
             
             except Exception as e:
